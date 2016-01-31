@@ -124,14 +124,15 @@ func handleGetMany(w http.ResponseWriter, r *http.Request) {
 	// get params
 	queryString := "SELECT * FROM `equipment` LIMIT 10"
 	myQuery := gocb.NewN1qlQuery(queryString)
+	myQuery.Consistency(gocb.RequestPlus)
 
 	rows, err := bucket.ExecuteN1qlQuery(myQuery, nil)
 	if err != nil {
 		respondError(w, "error executing N1QL query", 500)
 	}
 
-	var dataRows []map[string]interface{}
-	var row map[string]interface{}
+	var dataRows []interface{}
+	var row interface{}
 	for rows.Next(&row) {
 		dataRows = append(dataRows, row)
 	}
