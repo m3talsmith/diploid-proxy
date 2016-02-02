@@ -140,7 +140,7 @@ func handleGetSingle(w http.ResponseWriter, r *http.Request) {
 	requestId := generateId(bucketName)
 	fmt.Printf("Request: %#v\n", requestId)
 	count = count + 1
-	fmt.Printf("get count: %d", count)
+	fmt.Printf("get count: %d\n", count)
 	//po man debugging
 	// if debug {
 	// 	fmt.Printf("debug %+v \n", debug)
@@ -160,7 +160,7 @@ func handleGetSingle(w http.ResponseWriter, r *http.Request) {
 
 func respond(w http.ResponseWriter, data interface{}, status int) {
 	cbResp := Response{
-		Data:   data,
+		Data:   data, // map[string]interface{}
 		Status: status,
 	}
 	bytes, err := json.Marshal(&cbResp)
@@ -172,6 +172,7 @@ func respond(w http.ResponseWriter, data interface{}, status int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	w.Write(bytes)
+
 }
 
 func respondError(w http.ResponseWriter, err string, status int) {
