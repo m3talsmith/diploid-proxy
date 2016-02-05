@@ -89,8 +89,12 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := generateId(docType)
+	id := generateId()
+
 	bodyMap["id"] = id
+	bodyMap["doc_type"] = docType
+	bodyMap["key"] = generateKey(docType, id)
+
 	saved, err := insertRecord(id, bodyMap)
 	if err != nil {
 		respondError(w, err.Error(), 500)
@@ -199,7 +203,10 @@ func insertRecord(id string, data map[string]interface{}) (map[string]interface{
 	return data, nil
 }
 
-func generateId(docType string) string {
-	id := uuid.New()
+func generateId() string {
+	return uuid.New()
+}
+
+func generateKey(docType, id string) string {
 	return fmt.Sprintf("%s::%s", docType, id)
 }
