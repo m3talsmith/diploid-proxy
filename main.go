@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pborman/uuid"
 	"io/ioutil"
+	"log"
 	"net/http"
 )
 
@@ -26,8 +27,19 @@ type Response struct {
 }
 
 func main() {
-	cluster, _ := gocb.Connect("couchbase://127.0.0.1")
-	bucket, _ = cluster.OpenBucket("equipment", "")
+	checkOptions()
+
+	protocol := "couchbase"
+	if app.Secure {
+		protocol = "couchbases"
+	}
+
+	cluster, err := gocb.Connect(fmt.Sprintf("%s://%s", protocol, app.CouchbaseHost))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	bucket, _ = cluster.OpenBucket(app.Bucket, "")
 	router := mux.NewRouter()
 
 	// add routes here
@@ -40,26 +52,10 @@ func main() {
 
 	// init router
 	http.Handle("/", router)
-	fmt.Print("starting server on localhost:4051\n")
-	http.ListenAndServe(":4051", nil)
-}
 
-func bucketIdHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	switch r.Method {
-	case "GET":
-		handleGetSingle(w, r)
-	case "PUT":
-		handlePut(w, r)
-	case "DELETE":
-		handleDelete(w, r)
-	default:
-		somethingWentWrong(w, r)
-	}
-}
-
-func somethingWentWrong(w http.ResponseWriter, r *http.Request) {
-	respondError(w, "Method Not Allowed", 405)
+	port := fmt.Sprintf(":%d", app.ProxyPort)
+	log.Println(fmt.Sprintf("starting server on localhost%s", port))
+	http.ListenAndServe(port, nil)
 }
 
 func handlePost(w http.ResponseWriter, r *http.Request) {
