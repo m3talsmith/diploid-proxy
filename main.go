@@ -12,8 +12,9 @@ import (
 	"net/http"
 )
 
-var debug bool = false
-var count int = 0
+// TODOS:
+// 	implement PUT method
+// 	implement DELETE method
 
 var blankIdError = errors.New("Cannot insert record with blank id")
 
@@ -29,32 +30,41 @@ type Response struct {
 func main() {
 	checkOptions()
 
-	protocol := "couchbase"
-	if app.Secure {
-		protocol = "couchbases"
+	protocol := "couchbases"
+	if app.Insecure {
+		protocol = "couchbase"
+		log.Println("[couchbase] *WARNING* Connecting to CouchBase insecurely")
 	}
 
-	cluster, err := gocb.Connect(fmt.Sprintf("%s://%s", protocol, app.CouchbaseHost))
+	couchbaseURI := fmt.Sprintf("%s://%s", protocol, app.CouchbaseHost)
+
+	cluster, err := gocb.Connect(couchbaseURI)
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("[couchbase] Connected to couchbase at %s\n", couchbaseURI)
 
-	bucket, _ = cluster.OpenBucket(app.Bucket, "")
+	bucket, err = cluster.OpenBucket(app.Bucket, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("[couchbase] Using bucket %q", app.Bucket)
+
 	router := mux.NewRouter()
 
 	// add routes here
 
-	router.HandleFunc("/{bucketName}", handleGetMany).Methods("GET")
-	router.HandleFunc("/{bucketName}", handlePost).Methods("POST")
-	router.HandleFunc("/{bucketName}/{id}", handleGetSingle).Methods("GET")
-	router.HandleFunc("/{bucketName}/{id}", handlePut).Methods("PUT")
-	router.HandleFunc("/{bucketName}/{id}", handleDelete).Methods("DELETE")
+	router.HandleFunc("/{docType}", handleGetMany).Methods("GET")
+	router.HandleFunc("/{docType}", handlePost).Methods("POST")
+	router.HandleFunc("/{docType}/{id}", handleGetSingle).Methods("GET")
+	router.HandleFunc("/{docType}/{id}", handlePut).Methods("PUT")
+	router.HandleFunc("/{docType}/{id}", handleDelete).Methods("DELETE")
 
 	// init router
 	http.Handle("/", router)
 
 	port := fmt.Sprintf(":%d", app.ProxyPort)
-	log.Println(fmt.Sprintf("starting server on localhost%s", port))
+	log.Println(fmt.Sprintf("[server] Starting server on localhost%s", port))
 	http.ListenAndServe(port, nil)
 }
 
@@ -62,27 +72,28 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	//params
 	vars := mux.Vars(r)
-	bucketName, _ := vars["bucketName"]
+	docType, _ := vars["docType"]
 
 	// get body
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		panic(err)
+		respondError(w, err.Error(), 500)
+		return
 	}
 
-	fmt.Printf("posted %#v\n", string(body))
 	var bodyMap map[string]interface{}
 
 	if err := json.Unmarshal(body, &bodyMap); err != nil {
-		panic(err)
+		respondError(w, err.Error(), 500)
+		return
 	}
-	id := generateId(bucketName)
-	// fmt.Printf("id was: %q", id)
 
+	id := generateId(docType)
 	bodyMap["id"] = id
 	saved, err := insertRecord(id, bodyMap)
 	if err != nil {
-		respondError(w, "failed to insert", 500)
+		respondError(w, err.Error(), 500)
+		return
 	}
 
 	respond(w, saved, 201)
@@ -99,22 +110,17 @@ func handleDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetMany(w http.ResponseWriter, r *http.Request) {
-	//vars := mux.Vars(r)
-	//bucketName, _ := vars["bucketName"]
+	vars := mux.Vars(r)
+	docType, _ := vars["docType"]
 
-	// if debug {
-	// 	fmt.Print("handleGetMany")
-	// 	fmt.Printf("debug %+v \n", debug)
-	// 	fmt.Printf("bucketName was %q \n", bucketName)
-	// }
-	// get params
-	queryString := "SELECT * FROM `equipment` LIMIT 10"
+	queryString := fmt.Sprintf("SELECT * FROM `%s` WHERE doc_type=%q;", app.Bucket, docType)
 	myQuery := gocb.NewN1qlQuery(queryString)
 	myQuery.Consistency(gocb.RequestPlus)
 
 	rows, err := bucket.ExecuteN1qlQuery(myQuery, nil)
 	if err != nil {
-		respondError(w, "error executing N1QL query", 500)
+		respondError(w, err.Error(), 500)
+		return
 	}
 
 	var dataRows []interface{}
@@ -124,30 +130,18 @@ func handleGetMany(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = rows.Close()
 	respond(w, dataRows, 200)
-
 }
 
 func handleGetSingle(w http.ResponseWriter, r *http.Request) {
 	//get params
 	vars := mux.Vars(r)
-	bucketName, _ := vars["bucketName"]
+	// docType, _ := vars["docType"]
 	id, _ := vars["id"]
-
-	requestId := generateId(bucketName)
-	fmt.Printf("Request: %#v\n", requestId)
-	count = count + 1
-	fmt.Printf("get count: %d\n", count)
-	//po man debugging
-	// if debug {
-	// 	fmt.Printf("debug %+v \n", debug)
-	// 	fmt.Printf("bucketName was %q \n", bucketName)
-	// 	fmt.Printf("id was %q \n", id)
-	// }
 
 	var found map[string]interface{}
 
 	if _, err := bucket.Get(id, &found); err != nil {
-		respondError(w, "Not Found", 404)
+		respondError(w, err.Error(), 404)
 		return
 	}
 
@@ -155,16 +149,19 @@ func handleGetSingle(w http.ResponseWriter, r *http.Request) {
 }
 
 func respond(w http.ResponseWriter, data interface{}, status int) {
-	cbResp := Response{
+	resp := Response{
 		Data:   data, // map[string]interface{}
 		Status: status,
 	}
-	bytes, err := json.Marshal(&cbResp)
+
+	bytes, err := json.Marshal(&resp)
 	if err != nil {
 		bytes = []byte(`{"error":"failed to marshal response into json","status":500}`)
 		status = 500
 	}
-	fmt.Printf("Responding: %d\n", status)
+
+	log.Printf("[server][%d][response] %s\n", status, string(bytes))
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	w.Write(bytes)
@@ -176,12 +173,15 @@ func respondError(w http.ResponseWriter, err string, status int) {
 		Error:  err,
 		Status: status,
 	}
+
 	bytes, failure := json.Marshal(&resp)
 	if failure != nil {
 		bytes = []byte(`{"error":"failed to marshal error into json","status":500}`)
 		status = 500
 	}
-	fmt.Printf("Responding: %d", status)
+
+	log.Printf("[server][%d][error] %s\n", status, err)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	w.Write(bytes)
@@ -198,7 +198,7 @@ func insertRecord(id string, data map[string]interface{}) (map[string]interface{
 	return data, nil
 }
 
-func generateId(bucketName string) string {
+func generateId(docType string) string {
 	id := uuid.New()
-	return fmt.Sprintf("%s::%s", bucketName, id)
+	return fmt.Sprintf("%s::%s", docType, id)
 }
