@@ -90,6 +90,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := generateId()
+	log.Printf("[debug] id => %s", id)
 
 	bodyMap["id"] = id
 	bodyMap["doc_type"] = docType
@@ -193,7 +194,7 @@ func respondError(w http.ResponseWriter, err string, status int) {
 }
 
 func insertRecord(id string, data map[string]interface{}) (map[string]interface{}, error) {
-	if id != "" {
+	if id == "" {
 		return data, blankIdError
 	}
 	_, err := bucket.Insert(id, data, 0)
