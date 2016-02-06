@@ -50,13 +50,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// this is not working for some reason
-
-	// myQuery := gocb.NewN1qlQuery(fmt.Sprintf("CREATE PRIMARY INDEX ON `%s`", app.Bucket))
-	// if _, err := bucket.ExecuteN1qlQuery(myQuery, nil); err != nil {
-	// 	fmt.Println("ERROR EXECUTING N1QL QUERY for index creation")
-	// 	log.Fatal(err)
-	// }
+	createBucketIndex := gocb.NewN1qlQuery(fmt.Sprintf("CREATE PRIMARY INDEX `key` ON `%s` USING GSI", app.Bucket))
+	if _, err := bucket.ExecuteN1qlQuery(createBucketIndex, nil); err != nil {
+		fmt.Println("ERROR EXECUTING N1QL QUERY for index creation")
+		log.Fatal(err)
+	}
 
 	log.Printf("[couchbase] Using bucket %q", app.Bucket)
 
@@ -128,7 +126,7 @@ func handleGetMany(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	docType, _ := vars["docType"]
 
-	queryString := fmt.Sprintf("SELECT * FROM `%s` WHERE doc_type=%q;", app.Bucket, docType)
+	queryString := fmt.Sprintf("SELECT * FROM `%s` WHERE doc_type=%q LIMIT 100;", app.Bucket, docType)
 	myQuery := gocb.NewN1qlQuery(queryString)
 	myQuery.Consistency(gocb.RequestPlus)
 
