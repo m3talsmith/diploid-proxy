@@ -49,6 +49,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// this is not working for some reason
+
+	// myQuery := gocb.NewN1qlQuery(fmt.Sprintf("CREATE PRIMARY INDEX ON `%s`", app.Bucket))
+	// if _, err := bucket.ExecuteN1qlQuery(myQuery, nil); err != nil {
+	// 	fmt.Println("ERROR EXECUTING N1QL QUERY for index creation")
+	// 	log.Fatal(err)
+	// }
+
 	log.Printf("[couchbase] Using bucket %q", app.Bucket)
 
 	router := mux.NewRouter()
@@ -70,7 +79,7 @@ func main() {
 }
 
 func handlePost(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+
 	//params
 	vars := mux.Vars(r)
 	docType, _ := vars["docType"]
@@ -167,6 +176,7 @@ func respond(w http.ResponseWriter, data interface{}, status int) {
 
 	log.Printf("[server][%d][response] %s\n", status, string(bytes))
 
+	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	w.Write(bytes)
@@ -187,13 +197,14 @@ func respondError(w http.ResponseWriter, err string, status int) {
 
 	log.Printf("[server][%d][error] %s\n", status, err)
 
+	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	w.Write(bytes)
 }
 
 func insertRecord(id string, data map[string]interface{}) (map[string]interface{}, error) {
-	if id != "" {
+	if id == "" {
 		return data, blankIdError
 	}
 	_, err := bucket.Insert(id, data, 0)
