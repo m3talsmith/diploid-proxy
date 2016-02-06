@@ -99,6 +99,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := generateId()
+	log.Printf("[debug] id => %s", id)
 
 	bodyMap["id"] = id
 	bodyMap["doc_type"] = docType
