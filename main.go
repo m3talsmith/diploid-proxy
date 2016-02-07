@@ -61,6 +61,7 @@ func main() {
 	router := mux.NewRouter()
 
 	// add routes here
+	router.HandleFunc("/health", handleHealth).Methods("GET")
 
 	router.HandleFunc("/{docType}", handleGetMany).Methods("GET")
 	router.HandleFunc("/{docType}", handlePost).Methods("POST")
@@ -74,6 +75,10 @@ func main() {
 	port := fmt.Sprintf(":%d", app.ProxyPort)
 	log.Println(fmt.Sprintf("[server] Starting server on localhost%s", port))
 	http.ListenAndServe(port, nil)
+}
+
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	respond(w, "ok", 200)
 }
 
 func handlePost(w http.ResponseWriter, r *http.Request) {
