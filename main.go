@@ -155,8 +155,24 @@ func handlePut(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDelete(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, "handled %s", r.Method)
+	vars := mux.Vars(r)
+	id, _ := vars["id"]
+
+	var foundMap map[string]interface{}
+
+	if _, err := bucket.Get(id, &foundMap); err != nil {
+		respondError(w, err.Error(), 404)
+		return
+	}
+
+	var cas int
+
+	if _, err := bucket.Get(id, &cas); err != nil {
+		respondError(w, err.Error(), 500)
+		return
+	}
+
+	respond(w, foundMap, 201)
 }
 
 func handleGetMany(w http.ResponseWriter, r *http.Request) {
