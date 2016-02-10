@@ -118,8 +118,40 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func handlePut(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, "handled %s", r.Method)
+	vars := mux.Vars(r)
+	docType, _ := vars["docType"]
+	id, _ := vars["id"]
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		respondError(w, err.Error(), 500)
+		return
+	}
+
+	var foundMap map[string]interface{}
+
+	if _, err := bucket.Get(id, &foundMap); err != nil {
+		respondError(w, err.Error(), 404)
+		return
+	}
+
+	var bodyMap map[string]interface{}
+
+	if err := json.Unmarshal(body, &bodyMap); err != nil {
+		respondError(w, err.Error(), 500)
+		return
+	}
+
+	bodyMap["doc_type"] = docType
+	bodyMap["key"] = generateKey(docType, id)
+
+	saved, err := updateRecord(id, foundMap, bodyMap)
+	if err != nil {
+		respondError(w, err.Error(), 500)
+		return
+	}
+
+	respond(w, saved, 201)
 }
 
 func handleDelete(w http.ResponseWriter, r *http.Request) {
@@ -216,6 +248,23 @@ func insertRecord(id string, data map[string]interface{}) (map[string]interface{
 		return data, err
 	}
 	return data, nil
+}
+
+func updateRecord(id string, resource, changes map[string]interface{}) (map[string]interface{}, error) {
+	if id == "" {
+		return resource, blankIdError
+	}
+
+	for key, value := range changes {
+		resource[key] = value
+	}
+
+	_, err := bucket.Upsert(id, resource, 0)
+	if err != nil {
+		return resource, err
+	}
+
+	return resource, nil
 }
 
 func generateId() string {
