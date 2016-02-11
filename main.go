@@ -165,9 +165,7 @@ func handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var cas int
-
-	if _, err := bucket.Get(id, &cas); err != nil {
+	if _, err := bucket.Remove(id, 0); err != nil {
 		respondError(w, err.Error(), 500)
 		return
 	}
