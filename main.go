@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 // TODOS:
@@ -102,7 +103,9 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := generateId()
-	log.Printf("[debug] id => %s", id)
+	if app.Info {
+		log.Printf("[debug] id => %s", id)
+	}
 
 	bodyMap["id"] = id
 	bodyMap["doc_type"] = docType
@@ -175,9 +178,25 @@ func handleDelete(w http.ResponseWriter, r *http.Request) {
 
 func handleGetMany(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	docType, _ := vars["docType"]
+	docType := vars["docType"]
 
-	queryString := fmt.Sprintf("SELECT * FROM `%s` WHERE doc_type=%q LIMIT 100;", app.Bucket, docType)
+	_ = r.ParseForm()
+
+	page := r.FormValue("page")
+	if page == "" {
+		page = "1"
+	}
+
+	amount := r.FormValue("amount")
+	if amount == "" {
+		amount = "25"
+	}
+
+	pageInt, _ := strconv.Atoi(page)
+	amountInt, _ := strconv.Atoi(amount)
+	offset := (pageInt - 1) * amountInt
+
+	queryString := fmt.Sprintf("SELECT * FROM `%s` WHERE doc_type=%q LIMIT %v OFFSET %v;", app.Bucket, docType, amountInt, offset)
 	myQuery := gocb.NewN1qlQuery(queryString)
 	myQuery.Consistency(gocb.RequestPlus)
 
@@ -197,9 +216,7 @@ func handleGetMany(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetSingle(w http.ResponseWriter, r *http.Request) {
-	//get params
 	vars := mux.Vars(r)
-	// docType, _ := vars["docType"]
 	id, _ := vars["id"]
 
 	var found map[string]interface{}
@@ -224,7 +241,9 @@ func respond(w http.ResponseWriter, data interface{}, status int) {
 		status = 500
 	}
 
-	log.Printf("[server][%d][response] %s\n", status, string(bytes))
+	if app.Info {
+		log.Printf("[server][%d][response] %s\n", status, string(bytes))
+	}
 
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Content-Type", "application/json")
@@ -245,7 +264,9 @@ func respondError(w http.ResponseWriter, err string, status int) {
 		status = 500
 	}
 
-	log.Printf("[server][%d][error] %s\n", status, err)
+	if app.Info {
+		log.Printf("[server][%d][error] %s\n", status, err)
+	}
 
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Content-Type", "application/json")
