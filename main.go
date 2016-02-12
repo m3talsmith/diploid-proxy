@@ -196,6 +196,7 @@ func handleGetMany(w http.ResponseWriter, r *http.Request) {
 	amountInt, _ := strconv.Atoi(amount)
 	offset := (pageInt - 1) * amountInt
 
+	log.Printf("SELECT * FROM `%s` WHERE doc_type=%q LIMIT %v OFFSET %v;\n", app.Bucket, docType, amountInt, offset)
 	queryString := fmt.Sprintf("SELECT * FROM `%s` WHERE doc_type=%q LIMIT %v OFFSET %v;", app.Bucket, docType, amountInt, offset)
 	myQuery := gocb.NewN1qlQuery(queryString)
 	myQuery.Consistency(gocb.RequestPlus)
@@ -207,9 +208,9 @@ func handleGetMany(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var dataRows []interface{}
-	var row interface{} // interface{} instead of map[string]interface{} here or it won't work
+	var row map[string]interface{}
 	for rows.Next(&row) {
-		dataRows = append(dataRows, row)
+		dataRows = append(dataRows, row[app.Bucket])
 	}
 	_ = rows.Close()
 	respond(w, dataRows, 200)
