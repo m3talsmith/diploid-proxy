@@ -86,7 +86,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 	//params
 	vars := mux.Vars(r)
-	docType, _ := vars["docType"]
+	docType := vars["docType"]
 
 	// get body
 	body, err := ioutil.ReadAll(r.Body)
@@ -107,11 +107,13 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[debug] id => %s", id)
 	}
 
+	key := generateKey(docType, id)
+
 	bodyMap["id"] = id
 	bodyMap["doc_type"] = docType
-	bodyMap["key"] = generateKey(docType, id)
+	bodyMap["key"] = key
 
-	saved, err := insertRecord(id, bodyMap)
+	saved, err := insertRecord(key, bodyMap)
 	if err != nil {
 		respondError(w, err.Error(), 500)
 		return
@@ -122,19 +124,13 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 func handlePut(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	docType, _ := vars["docType"]
-	id, _ := vars["id"]
+	docType := vars["docType"]
+	id := vars["id"]
+	key := generateKey(docType, id)
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		respondError(w, err.Error(), 500)
-		return
-	}
-
-	var foundMap map[string]interface{}
-
-	if _, err := bucket.Get(id, &foundMap); err != nil {
-		respondError(w, err.Error(), 404)
 		return
 	}
 
@@ -145,35 +141,44 @@ func handlePut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bodyMap["doc_type"] = docType
-	bodyMap["key"] = generateKey(docType, id)
+	var foundMap map[string]interface{}
 
-	saved, err := updateRecord(id, foundMap, bodyMap)
+	if _, err := bucket.Get(key, &foundMap); err != nil {
+		respondError(w, err.Error(), 404)
+		return
+	}
+
+	bodyMap["doc_type"] = docType
+	bodyMap["key"] = key
+
+	saved, err := updateRecord(key, foundMap, bodyMap)
 	if err != nil {
 		respondError(w, err.Error(), 500)
 		return
 	}
 
-	respond(w, saved, 201)
+	respond(w, saved, 202)
 }
 
 func handleDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id, _ := vars["id"]
+	docType := vars["docType"]
+	id := vars["id"]
+	key := generateKey(docType, id)
 
 	var foundMap map[string]interface{}
 
-	if _, err := bucket.Get(id, &foundMap); err != nil {
+	if _, err := bucket.Get(key, &foundMap); err != nil {
 		respondError(w, err.Error(), 404)
 		return
 	}
 
-	if _, err := bucket.Remove(id, 0); err != nil {
+	if _, err := bucket.Remove(key, 0); err != nil {
 		respondError(w, err.Error(), 500)
 		return
 	}
 
-	respond(w, foundMap, 201)
+	respond(w, foundMap, 202)
 }
 
 func handleGetMany(w http.ResponseWriter, r *http.Request) {
@@ -218,11 +223,13 @@ func handleGetMany(w http.ResponseWriter, r *http.Request) {
 
 func handleGetSingle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id, _ := vars["id"]
+	id := vars["id"]
+	docType := vars["docType"]
+	key := generateKey(docType, id)
 
 	var found map[string]interface{}
 
-	if _, err := bucket.Get(id, &found); err != nil {
+	if _, err := bucket.Get(key, &found); err != nil {
 		respondError(w, err.Error(), 404)
 		return
 	}
@@ -275,19 +282,19 @@ func respondError(w http.ResponseWriter, err string, status int) {
 	w.Write(bytes)
 }
 
-func insertRecord(id string, data map[string]interface{}) (map[string]interface{}, error) {
-	if id == "" {
+func insertRecord(key string, data map[string]interface{}) (map[string]interface{}, error) {
+	if key == "" {
 		return data, blankIdError
 	}
-	_, err := bucket.Insert(id, data, 0)
+	_, err := bucket.Insert(key, data, 0)
 	if err != nil {
 		return data, err
 	}
 	return data, nil
 }
 
-func updateRecord(id string, resource, changes map[string]interface{}) (map[string]interface{}, error) {
-	if id == "" {
+func updateRecord(key string, resource, changes map[string]interface{}) (map[string]interface{}, error) {
+	if key == "" {
 		return resource, blankIdError
 	}
 
@@ -295,7 +302,7 @@ func updateRecord(id string, resource, changes map[string]interface{}) (map[stri
 		resource[key] = value
 	}
 
-	_, err := bucket.Upsert(id, resource, 0)
+	_, err := bucket.Upsert(key, resource, 0)
 	if err != nil {
 		return resource, err
 	}
