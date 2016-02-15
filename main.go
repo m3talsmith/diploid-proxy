@@ -64,11 +64,11 @@ func main() {
 	// add routes here
 	router.HandleFunc("/health", handleHealth).Methods("GET")
 
-	router.HandleFunc("/{docType}", handleGetMany).Methods("GET")
-	router.HandleFunc("/{docType}", handlePost).Methods("POST")
-	router.HandleFunc("/{docType}/{id}", handleGetSingle).Methods("GET")
-	router.HandleFunc("/{docType}/{id}", handlePut).Methods("PUT")
-	router.HandleFunc("/{docType}/{id}", handleDelete).Methods("DELETE")
+	router.HandleFunc("/resource/{docType}", handleGetMany).Methods("GET")
+	router.HandleFunc("/resource/{docType}", handlePost).Methods("POST")
+	router.HandleFunc("/resource/{docType}/{id}", handleGetSingle).Methods("GET")
+	router.HandleFunc("/resource/{docType}/{id}", handlePut).Methods("PUT")
+	router.HandleFunc("/resource/{docType}/{id}", handleDelete).Methods("DELETE")
 
 	// init router
 	http.Handle("/", router)
