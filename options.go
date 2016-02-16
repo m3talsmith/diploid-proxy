@@ -8,6 +8,7 @@ type App struct {
 	Insecure      bool
 	Verbose       bool
 	Bucket        string
+	LogFile       string
 }
 
 var app App = App{}

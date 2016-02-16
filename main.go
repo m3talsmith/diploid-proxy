@@ -13,11 +13,6 @@ import (
 	"strconv"
 )
 
-// TODOS:
-//  implement PUT method
-//  implement DELETE method
-//  make sure Couchbase is using the correct primary key or index.
-
 var blankIdError = errors.New("Cannot insert record with blank id")
 
 // bucket reference
@@ -30,6 +25,7 @@ type Response struct {
 }
 
 func main() {
+	// Set app flags from the cli
 	checkOptions()
 
 	protocol := "couchbases"
