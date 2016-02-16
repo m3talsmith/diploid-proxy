@@ -6,7 +6,7 @@ type App struct {
 	CouchbaseHost string
 	ProxyPort     int
 	Insecure      bool
-	Info          bool
+	Verbose       bool
 	Bucket        string
 }
 
@@ -21,6 +21,7 @@ func checkOptions() {
 	flag.IntVar(&app.ProxyPort, "p", 4051, "Server Proxy port")
 	flag.BoolVar(&app.Insecure, "insecure", false, "Use Couchbase tls")
 	flag.BoolVar(&app.Insecure, "i", false, "Use Couchbase tls")
-	flag.BoolVar(&app.Info, "info", false, "Display all info")
+	flag.BoolVar(&app.Verbose, "verbose", false, "Display all info")
+	flag.BoolVar(&app.Verbose, "v", false, "Display all info")
 	flag.Parse()
 }

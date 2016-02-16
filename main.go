@@ -35,7 +35,9 @@ func main() {
 	protocol := "couchbases"
 	if app.Insecure {
 		protocol = "couchbase"
-		log.Println("[couchbase] *WARNING* Connecting to CouchBase insecurely")
+		if app.Verbose {
+			log.Println("[couchbase] *WARNING* Connecting to CouchBase insecurely")
+		}
 	}
 
 	couchbaseURI := fmt.Sprintf("%s://%s", protocol, app.CouchbaseHost)
@@ -44,7 +46,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("[couchbase] Connected to couchbase at %s\n", couchbaseURI)
+	if app.Verbose {
+		log.Printf("[couchbase] Connected to couchbase at %s\n", couchbaseURI)
+	}
 
 	bucket, err = cluster.OpenBucket(app.Bucket, "")
 	if err != nil {
@@ -57,7 +61,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("[couchbase] Using bucket %q", app.Bucket)
+	if app.Verbose {
+		log.Printf("[couchbase] Using bucket %q", app.Bucket)
+	}
 
 	router := mux.NewRouter()
 
@@ -74,7 +80,9 @@ func main() {
 	http.Handle("/", router)
 
 	port := fmt.Sprintf(":%d", app.ProxyPort)
-	log.Println(fmt.Sprintf("[server] Starting server on localhost%s", port))
+	if app.Verbose {
+		log.Println(fmt.Sprintf("[server] Starting server on localhost%s", port))
+	}
 	http.ListenAndServe(port, nil)
 }
 
@@ -103,7 +111,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := generateId()
-	if app.Info {
+	if app.Verbose {
 		log.Printf("[debug] id => %s", id)
 	}
 
@@ -248,7 +256,7 @@ func respond(w http.ResponseWriter, data interface{}, status int) {
 		status = 500
 	}
 
-	if app.Info {
+	if app.Verbose {
 		log.Printf("[server][%d][response] %s\n", status, string(bytes))
 	}
 
@@ -271,7 +279,7 @@ func respondError(w http.ResponseWriter, err string, status int) {
 		status = 500
 	}
 
-	if app.Info {
+	if app.Verbose {
 		log.Printf("[server][%d][error] %s\n", status, err)
 	}
 
