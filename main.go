@@ -322,5 +322,8 @@ func generateId() string {
 }
 
 func generateKey(docType, id string) string {
-	return fmt.Sprintf("%s::%s", docType, id)
+	/* Generates a URN as a key: RFC 2141
+	 * https://www.ietf.org/rfc/rfc2141.txt
+	 */
+	return fmt.Sprintf("%s:%s", docType, id)
 }
