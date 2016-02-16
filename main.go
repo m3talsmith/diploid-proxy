@@ -13,11 +13,12 @@ import (
 	"strconv"
 )
 
-var blankIdError = errors.New("Cannot insert record with blank id")
+var errBlankID = errors.New("Cannot insert record with blank id")
 
 // bucket reference
 var bucket *gocb.Bucket
 
+// Response to http request
 type Response struct {
 	Error  string      `json:"error,omitempty"`
 	Data   interface{} `json:"data,omitempty"`
@@ -106,7 +107,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := generateId()
+	id := generateID()
 	if app.Verbose {
 		log.Printf("[debug] id => %s", id)
 	}
@@ -287,7 +288,7 @@ func respondError(w http.ResponseWriter, err string, status int) {
 
 func insertRecord(key string, data map[string]interface{}) (map[string]interface{}, error) {
 	if key == "" {
-		return data, blankIdError
+		return data, errBlankID
 	}
 	_, err := bucket.Insert(key, data, 0)
 	if err != nil {
@@ -298,7 +299,7 @@ func insertRecord(key string, data map[string]interface{}) (map[string]interface
 
 func updateRecord(key string, resource, changes map[string]interface{}) (map[string]interface{}, error) {
 	if key == "" {
-		return resource, blankIdError
+		return resource, errBlankID
 	}
 
 	for key, value := range changes {
@@ -313,7 +314,7 @@ func updateRecord(key string, resource, changes map[string]interface{}) (map[str
 	return resource, nil
 }
 
-func generateId() string {
+func generateID() string {
 	return uuid.New()
 }
 

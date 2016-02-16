@@ -2,6 +2,7 @@ package main
 
 import "flag"
 
+// App is used to hold cli flags
 type App struct {
 	CouchbaseHost string
 	ProxyPort     int
@@ -11,7 +12,7 @@ type App struct {
 	LogFile       string
 }
 
-var app App = App{}
+var app = App{}
 
 func checkOptions() {
 	flag.StringVar(&app.CouchbaseHost, "host", "127.0.0.1", "Couchbase host")
