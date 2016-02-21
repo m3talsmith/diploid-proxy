@@ -72,6 +72,7 @@ func main() {
 	router.HandleFunc("/resource/{docType}/{id}", handleGetSingle).Methods("GET")
 	router.HandleFunc("/resource/{docType}/{id}", handlePut).Methods("PUT")
 	router.HandleFunc("/resource/{docType}/{id}", handleDelete).Methods("DELETE")
+	router.HandleFunc("/view/{docType}/{viewName}/{id}", handleView).Methods("GET")
 
 	// init router
 	http.Handle("/", router)
@@ -85,6 +86,71 @@ func main() {
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	respond(w, "ok", 200)
+}
+
+func handleView(w http.ResponseWriter, r *http.Request) {
+	// While in dev the value of the Design Document Name is _design/dev_<docType>
+	// i.e. _design/dev_hospital
+	// the viewName should be the name of the relation
+	// i.e. if a hospital has_many doctors in the schema then the
+	// viewName is "doctors"
+
+	// example route: http://localhost:4051/view/dev_hospital/doctors
+
+	vars := mux.Vars(r)
+	id := vars["id"]
+	viewName := vars["viewName"]
+	docType := vars["docType"]
+
+	key := generateKey(docType, id)
+	query := gocb.NewViewQuery(docType, viewName).Key(key)
+	rows, err := bucket.ExecuteViewQuery(query)
+	if err != nil {
+		respondError(w, err.Error(), 500)
+		return
+	}
+
+	var data []interface{}
+	var row interface{}
+	for rows.Next(&row) {
+		data = append(data, row)
+	}
+	rows.Close()
+
+	respond(w, data, 200)
+}
+
+func handleDevView(w http.ResponseWriter, r *http.Request) {
+	// The value of the Design Document Name is _design/dev_<docType>
+	// i.e. _design/dev_hospital
+	// the viewName should be the name of the relation
+	// i.e. if a hospital has_many doctors in the schema then the
+	// viewName is "doctors"
+
+	// vars := mux.Vars(r)
+	// id := vars["id"]
+	id := "acb6a1fb-59f0-4b2f-b30c-3bee0a9fd83a"
+	//viewName := vars["viewName"]
+	viewName := "doctors"
+	docType := "hospital" // vars["docType"]
+	key := generateKey(docType, id)
+	designDoc := fmt.Sprintf("dev_%s", docType)
+	query := gocb.NewViewQuery(designDoc, viewName).Limit(10).Key(key)
+
+	rows, err := bucket.ExecuteViewQuery(query)
+	if err != nil {
+		respondError(w, err.Error(), 500)
+		return
+	}
+
+	var data = make([]interface{}, 0)
+	var row interface{}
+	for rows.Next(&row) {
+		data = append(data, row)
+	}
+	rows.Close()
+
+	respond(w, data, 200)
 }
 
 func handlePost(w http.ResponseWriter, r *http.Request) {
