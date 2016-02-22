@@ -72,7 +72,7 @@ func main() {
 	router.HandleFunc("/resource/{docType}/{id}", handleGetSingle).Methods("GET")
 	router.HandleFunc("/resource/{docType}/{id}", handlePut).Methods("PUT")
 	router.HandleFunc("/resource/{docType}/{id}", handleDelete).Methods("DELETE")
-	router.HandleFunc("/view/{docType}/{viewName}/{id}", handleView).Methods("GET")
+	router.HandleFunc("/view/{docType}/{id}/{viewName}", handleView).Methods("GET")
 
 	// init router
 	http.Handle("/", router)
@@ -111,9 +111,9 @@ func handleView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var data []interface{}
-	var row interface{}
+	var row map[string]interface{}
 	for rows.Next(&row) {
-		data = append(data, row)
+		data = append(data, row["value"])
 	}
 	rows.Close()
 
