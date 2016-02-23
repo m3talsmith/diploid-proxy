@@ -1,4 +1,6 @@
-# go-cb-proxy
+# Diploid Proxy
+
+Officially hosted at (https://github.com/diploid-science/diploid-proxy)
 
 ## Installation
 
