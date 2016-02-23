@@ -1,6 +1,6 @@
 # Diploid Proxy
 
-Officially hosted at (diploid-science/diploid-proxy)[https://github.com/diploid-science/diploid-proxy]
+Officially hosted at [diploid-science/diploid-proxy](https://github.com/diploid-science/diploid-proxy)
 
 ## Installation
 
