@@ -173,15 +173,18 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := generateID()
-	if app.Verbose {
-		log.Printf("[debug] id => %s", id)
+	bodyMap["doc_type"] = docType
+
+	id, idExists := bodyMap["id"].(string)
+	if !idExists {
+		id = generateID()
+		bodyMap["id"] = id
 	}
 
 	key := generateKey(docType, id)
-
-	bodyMap["id"] = id
-	bodyMap["doc_type"] = docType
+	if app.Verbose {
+		log.Printf("[debug] id => %s", id)
+	}
 	bodyMap["key"] = key
 
 	saved, err := insertRecord(key, bodyMap)
